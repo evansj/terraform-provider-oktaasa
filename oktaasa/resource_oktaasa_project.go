@@ -126,7 +126,7 @@ func buildProjectFromResourceData(d *schema.ResourceData) (*Project, error) {
 
 type Project struct {
 	Name                   string `json:"name"`
-	DeletedAt              string `json:"deleted_at"`
+	DeletedAt              string `json:"deleted_at,omitempty"`
 	CreateServerUsers      bool   `json:"create_server_users"`
 	ForceSharedSshUsers    bool   `json:"force_shared_ssh_users"`
 	ForwardTraffic         bool   `json:"forward_traffic"`

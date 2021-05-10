@@ -124,12 +124,6 @@ func buildProjectFromResourceData(d *schema.ResourceData) (*Project, error) {
 	return project, err
 }
 
-/*
-type ProjectList struct {
-  Projects []Project `json:"list"`
-}
-*/
-
 type Project struct {
 	Name                   string `json:"name"`
 	DeletedAt              string `json:"deleted_at"`

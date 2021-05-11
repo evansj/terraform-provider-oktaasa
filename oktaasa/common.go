@@ -47,6 +47,8 @@ func SendGet(bearer string, path string) (*resty.Response, error) {
 func SendPost(BearerToken, path string, body []byte) (*resty.Response, error) {
 	composedUrl := url + path
 
+	log.Printf("BearerToken %s", BearerToken)
+
 	resp, err := resty.R().
 		SetHeaders(map[string]string{
 			"Accept":       "application/json",

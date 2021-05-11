@@ -95,6 +95,10 @@ func resourceOKTAASAAssignGroupRead(d *schema.ResourceData, m interface{}) error
 	groupName := d.Id()
 
 	log.Printf("[INFO] Group ID is: %s", groupName)
+	log.Printf("[DEBUG] resourceOKTAASAAssignGroupRead d=%+v", d)
+	log.Printf("[DEBUG] resourceOKTAASAAssignGroupRead m=%+v", m)
+	log.Printf("[DEBUG] server_access=%t, server_admin=%t, create_server_group=%t", d.Get("server_access"), d.Get("server_admin"), d.Get("create_server_group"))
+
 	//get project_name from terraform config.
 	projectName := d.Get("project_name").(string)
 
@@ -130,6 +134,10 @@ func resourceOKTAASAAssignGroupRead(d *schema.ResourceData, m interface{}) error
 		d.Set("server_access", group.ServerAccess)
 		d.Set("server_admin", group.ServerAdmin)
 		d.Set("create_server_group", group.GroupSync)
+
+		log.Printf("[DEBUG] server status %d, response body %s", status, resp.Body())
+
+		log.Printf("[DEBUG] group assignment %s->%s: server_access=%t, server_admin=%t, create_server_group=%t", projectName, groupName, group.ServerAccess, group.ServerAdmin, group.GroupSync)
 
 		return nil
 	} else if status == 404 {

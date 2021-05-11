@@ -30,10 +30,12 @@ func Provider() terraform.ResourceProvider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
-			"oktaasa_project":          resourceOKTAASAProject(),
-			"oktaasa_enrollment_token": resourceOKTAASAToken(),
-			"oktaasa_assign_group":     resourceOKTAASAAssignGroup(),
-			"oktaasa_create_group":     resourceOKTAASACreateGroup(),
+			"oktaasa_project":                 resourceOKTAASAProject(),
+			"oktaasa_enrollment_token":        resourceOKTAASAToken(),
+			"oktaasa_assign_group":            resourceOKTAASAAssignGroup(),
+			"oktaasa_create_group":            resourceOKTAASACreateGroup(),
+			"oktaasa_sudo_entitlement":        resourceOKTAASASudoEntitlement(),
+			"oktaasa_assign_sudo_entitlement": resourceOKTAASAAssignSudoEntitlement(),
 		},
 
 		ConfigureFunc: providerConfigure,

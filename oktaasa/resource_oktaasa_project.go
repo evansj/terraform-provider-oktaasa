@@ -19,6 +19,16 @@ func resourceOKTAASAProject() *schema.Resource {
 				Type:     schema.TypeString,
 				Required: true,
 			},
+			"next_unix_uid": &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  60101,
+			},
+			"next_unix_gid": &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+				Default:  63001,
+			},
 			"create_server_users": &schema.Schema{
 				Type:     schema.TypeBool,
 				Optional: true,
@@ -94,6 +104,8 @@ func resourceOKTAASAProjectCreate(d *schema.ResourceData, m interface{}) error {
 func buildProjectFromResourceData(d *schema.ResourceData) (*Project, error) {
 	project := &Project{
 		Name:                   d.Get("project_name").(string),
+		NextUnixUid:            d.Get("next_unix_uid").(int),
+		NextUnixGid:            d.Get("next_unix_gid").(int),
 		CreateServerUsers:      d.Get("create_server_users").(bool),
 		ForceSharedSshUsers:    d.Get("force_shared_ssh_users").(bool),
 		ForwardTraffic:         d.Get("forward_traffic").(bool),
@@ -118,6 +130,8 @@ type Project struct {
 	CreateServerUsers      bool   `json:"create_server_users"`
 	ForceSharedSshUsers    bool   `json:"force_shared_ssh_users"`
 	ForwardTraffic         bool   `json:"forward_traffic"`
+	NextUnixUid            int    `json:"next_unix_uid"`
+	NextUnixGid            int    `json:"next_unix_gid"`
 	RDPSessionRecording    bool   `json:"rdp_session_recording"`
 	RequirePreauth         bool   `json:"require_preauth_for_creds"`
 	SharedAdminUserName    string `json:"shared_admin_user_name,omitempty"`
@@ -162,6 +176,8 @@ func resourceOKTAASAProjectRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("create_server_users", project.CreateServerUsers)
 		d.Set("force_shared_ssh_users", project.ForceSharedSshUsers)
 		d.Set("forward_traffic", project.ForwardTraffic)
+		d.Set("next_unix_uid", project.NextUnixUid)
+		d.Set("next_unix_gid", project.NextUnixGid)
 		d.Set("rdp_session_recording", project.RDPSessionRecording)
 		d.Set("require_preauthorization", project.RequirePreauth)
 		d.Set("shared_admin_user_name", project.SharedAdminUserName)

@@ -22,12 +22,12 @@ func resourceOKTAASAProject() *schema.Resource {
 			"next_unix_uid": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  60101,
+				Default:  0,
 			},
 			"next_unix_gid": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  63001,
+				Default:  0,
 			},
 			"create_server_users": &schema.Schema{
 				Type:     schema.TypeBool,
@@ -130,8 +130,8 @@ type Project struct {
 	CreateServerUsers      bool   `json:"create_server_users"`
 	ForceSharedSshUsers    bool   `json:"force_shared_ssh_users"`
 	ForwardTraffic         bool   `json:"forward_traffic"`
-	NextUnixUid            int    `json:"next_unix_uid"`
-	NextUnixGid            int    `json:"next_unix_gid"`
+	NextUnixUid            int    `json:"next_unix_uid,omitempty"`
+	NextUnixGid            int    `json:"next_unix_gid,omitempty"`
 	RDPSessionRecording    bool   `json:"rdp_session_recording"`
 	RequirePreauth         bool   `json:"require_preauth_for_creds"`
 	SharedAdminUserName    string `json:"shared_admin_user_name,omitempty"`
@@ -176,8 +176,16 @@ func resourceOKTAASAProjectRead(d *schema.ResourceData, m interface{}) error {
 		d.Set("create_server_users", project.CreateServerUsers)
 		d.Set("force_shared_ssh_users", project.ForceSharedSshUsers)
 		d.Set("forward_traffic", project.ForwardTraffic)
-		d.Set("next_unix_uid", project.NextUnixUid)
-		d.Set("next_unix_gid", project.NextUnixGid)
+		if d.Get("next_unix_uid").(int) != 0 {
+			// We don't care what next_unix_uid is serverside
+			// unless we have specified a value for it
+			d.Set("next_unix_uid", project.NextUnixUid)
+		}
+		if d.Get("next_unix_gid").(int) != 0 {
+			// We don't care what next_unix_gid is serverside
+			// unless we have specified a value for it
+			d.Set("next_unix_gid", project.NextUnixGid)
+		}
 		d.Set("rdp_session_recording", project.RDPSessionRecording)
 		d.Set("require_preauthorization", project.RequirePreauth)
 		d.Set("shared_admin_user_name", project.SharedAdminUserName)

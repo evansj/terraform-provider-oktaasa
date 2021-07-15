@@ -48,6 +48,36 @@ func TestAccProject(t *testing.T) {
 					),
 				),
 			},
+			{
+				Config: testAccProjectCreateConfig2,
+				Check: resource.ComposeTestCheckFunc(
+					testAccProjectCheckExists("oktaasa_project.test", project),
+					resource.TestCheckResourceAttr(
+						"oktaasa_project.test", "project_name", projectName,
+					),
+					resource.TestCheckResourceAttr(
+						"oktaasa_project.test", "next_unix_uid", "0",
+					),
+					resource.TestCheckResourceAttr(
+						"oktaasa_project.test", "next_unix_gid", "0",
+					),
+				),
+			},
+			{
+				Config: testAccProjectCreateConfigFull,
+				Check: resource.ComposeTestCheckFunc(
+					testAccProjectCheckExists("oktaasa_project.test", project),
+					resource.TestCheckResourceAttr(
+						"oktaasa_project.test", "project_name", projectName,
+					),
+					resource.TestCheckResourceAttr(
+						"oktaasa_project.test", "next_unix_uid", "0",
+					),
+					resource.TestCheckResourceAttr(
+						"oktaasa_project.test", "next_unix_gid", "0",
+					),
+				),
+			},
 		},
 	})
 }
@@ -108,6 +138,26 @@ resource "oktaasa_project" "test" {
     project_name = "test-acc-project"
   	next_unix_uid = 60120
   	next_unix_gid = 63020
+}`
+
+const testAccProjectCreateConfig2 = `
+resource "oktaasa_project" "test" {
+    project_name = "test-acc-project"
+}`
+
+const testAccProjectCreateConfigFull = `
+resource "oktaasa_project" "test" {
+    project_name              = "test-acc-project"
+  	next_unix_uid             = 60120
+  	next_unix_gid             = 63020
+    create_server_users       = true
+    force_shared_ssh_users    = true
+    forward_traffic           = true
+    rdp_session_recording     = true
+    require_preauthorization  = true
+    shared_admin_user_name    = "sauser"
+    shared_standard_user_name = "ssuser"
+    ssh_session_recording     = true
 }`
 
 const testAccProjectUpdateConfig = `

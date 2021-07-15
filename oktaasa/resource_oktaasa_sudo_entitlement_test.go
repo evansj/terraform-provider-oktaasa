@@ -1,106 +1,75 @@
 package oktaasa
 
 import (
-	"encoding/json"
-	"fmt"
+	//	"encoding/json"
+	//	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform/helper/resource"
 	"github.com/hashicorp/terraform/terraform"
 )
 
-func TestAccTkn(t *testing.T) {
-	//tkn := &EnrollmentToken{}
-	//tknName := "test-acc-token"
-	projectName := "test-acc-project2"
-	project := &Project{}
+func TestSudoEntitlement(t *testing.T) {
+	sudoEntitlementName := "test-sudo-entitlement"
+	sudoEntitlement := &SudoEntitlement{}
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
-		CheckDestroy: testAccProjectCheckDestroy2(project),
+		CheckDestroy: testSudoEntitlementDestroy(sudoEntitlement),
 		Steps: []resource.TestStep{
 			{
-				Config: testAccProjectTokenCreateConfig2,
+				Config: testSudoEntitlementCreateConfig,
 				Check: resource.ComposeTestCheckFunc(
-					testAccProjectCheckExists2("oktaasa_project.test", project),
 					resource.TestCheckResourceAttr(
-						"oktaasa_project.test", "project_name", projectName,
+						"oktaasa_sudo_entitlement.test", "name", sudoEntitlementName,
 					),
 					resource.TestCheckResourceAttr(
-						"oktaasa_project.test", "next_unix_uid", "60120",
+						"oktaasa_sudo_entitlement.test", "next_unix_uid", "60120",
 					),
 					resource.TestCheckResourceAttr(
-						"oktaasa_project.test", "next_unix_gid", "63020",
+						"oktaasa_sudo_entitlement.test", "next_unix_gid", "63020",
 					),
 					resource.TestCheckResourceAttr(
-						"oktaasa_enrollment_token.test-token", "project_name", projectName,
+						"oktaasa_enrollment_token.test-token", "sudoEntitlement_name", sudoEntitlementName,
 					),
 					resource.TestCheckResourceAttr(
 						"oktaasa_enrollment_token.test-token", "description", "Token for TestAcc",
 					),
 				),
 			},
-			//Note: OKTAASA does not allow token or token description changes once created (hence there is no Update step)
 		},
 	})
 }
 
-func testAccProjectCheckExists2(rn string, p *Project) resource.TestCheckFunc {
+func testSudoEntitlementDestroy(p *SudoEntitlement) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		rs, ok := s.RootModule().Resources[rn]
-		if !ok {
-			return fmt.Errorf("resource not found: %s", rn)
-		}
+		//config := testAccProvider.Meta().(Bearer)
 
-		// resource ID is project name
-		if rs.Primary.ID == "" {
-			return fmt.Errorf("resource id not set")
-		}
+		/*		resp, err := SendGet(config.BearerToken, "/teams/"+config.TeamName+"/sudoEntitlements/"+p.Name)
+				if err != nil {
+					return fmt.Errorf("error getting data source: %s", err)
+				}
 
-		config := testAccProvider.Meta().(Bearer)
+				status := resp.StatusCode()
+				deleted, err := checkSoftDelete(resp.Body())
+				if err != nil {
+					return fmt.Errorf("error while checking deleted status: %s", err)
+				}
 
-		resp, err := SendGet(config.BearerToken, "/teams/"+config.TeamName+"/projects/"+rs.Primary.ID)
-		if err != nil {
-			return fmt.Errorf("error getting data source: %s", err)
-		}
-
-		err = json.Unmarshal(resp.Body(), p)
-		if err != nil {
-			return fmt.Errorf("error unmarshaling data source response: %s", err)
-		}
-
+				if status == 200 && !deleted {
+					return fmt.Errorf("sudoEntitlement still exists")
+				}
+		*/
 		return nil
 	}
 }
 
-func testAccProjectCheckDestroy2(p *Project) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		config := testAccProvider.Meta().(Bearer)
-
-		resp, err := SendGet(config.BearerToken, "/teams/"+config.TeamName+"/projects/"+p.Name)
-		if err != nil {
-			return fmt.Errorf("error getting data source: %s", err)
-		}
-
-		status := resp.StatusCode()
-		deleted, err := checkSoftDelete(resp.Body())
-		if err != nil {
-			return fmt.Errorf("error while checking deleted status: %s", err)
-		}
-
-		if status == 200 && !deleted {
-			return fmt.Errorf("project still exists")
-		}
-
-		return nil
-	}
-}
-
-func testAccTknCheckExists(rn string, p *EnrollmentToken) resource.TestCheckFunc {
+/*
+func testSudoEntitlementCheckExists(rn string, p *EnrollmentToken) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[rn]
-		projectName := "test-acc-project2"
+		sudoEntitlementName := "test-acc-sudoEntitlement2"
 
 		if !ok {
 			return fmt.Errorf("resource not found: %s", rn)
@@ -113,7 +82,7 @@ func testAccTknCheckExists(rn string, p *EnrollmentToken) resource.TestCheckFunc
 
 		config := testAccProvider.Meta().(Bearer)
 
-		resp, err := SendGet(config.BearerToken, "/teams/"+config.TeamName+"/projects/"+projectName+"/server_enrollment_tokens/"+rs.Primary.ID)
+		resp, err := SendGet(config.BearerToken, "/teams/"+config.TeamName+"/sudoEntitlements/"+sudoEntitlementName+"/server_enrollment_tokens/"+rs.Primary.ID)
 		if err != nil {
 			return fmt.Errorf("error getting data source: %s", err)
 		}
@@ -126,8 +95,9 @@ func testAccTknCheckExists(rn string, p *EnrollmentToken) resource.TestCheckFunc
 		return nil
 	}
 }
-
-func testAccTknCheckDestroy(p *EnrollmentToken) resource.TestCheckFunc {
+*/
+/*
+func testSudoEntitlementCheckDestroy(p *EnrollmentToken) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		config := testAccProvider.Meta().(Bearer)
 
@@ -149,15 +119,17 @@ func testAccTknCheckDestroy(p *EnrollmentToken) resource.TestCheckFunc {
 		return nil
 	}
 }
+*/
 
-const testAccProjectTokenCreateConfig2 = `
-resource "oktaasa_project" "test" {
-    project_name = "test-acc-project2"
-  	next_unix_uid = 60120
-  	next_unix_gid = 63020
+const testSudoEntitlementCreateConfig = `
+resource "oktaasa_sudo_entitlement" "test" {
+  name        = "test-sudo-entitlement"
+  description = "description"
+  run_as      = "root"
+
+  command {
+		command      = "command"
+		command_type = "raw"
+	}
 }
-
-resource "oktaasa_enrollment_token" "test-token" {
-    project_name = oktaasa_project.test.project_name
-  	description = "Token for TestAcc"
-}`
+`

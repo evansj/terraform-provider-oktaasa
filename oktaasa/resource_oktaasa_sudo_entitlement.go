@@ -78,6 +78,9 @@ func resourceOKTAASASudoEntitlement() *schema.Resource {
 				Elem:     &schema.Schema{Type: schema.TypeString},
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			State: schema.ImportStatePassthrough,
+		},
 	}
 }
 
@@ -86,7 +89,6 @@ type StructuredCommand struct {
 	ArgsType    string `json:"args_type,omitempty"`
 	Command     string `json:"command"`
 	CommandType string `json:"command_type,omitempty"`
-	//RenderedCommand string `json:"rendered_command"`
 }
 
 type SudoEntitlement struct {

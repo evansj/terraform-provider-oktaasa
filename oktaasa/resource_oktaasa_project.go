@@ -22,12 +22,10 @@ func resourceOKTAASAProject() *schema.Resource {
 			"next_unix_uid": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  0,
 			},
 			"next_unix_gid": &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
-				Default:  0,
 			},
 			"create_server_users": &schema.Schema{
 				Type:     schema.TypeBool,

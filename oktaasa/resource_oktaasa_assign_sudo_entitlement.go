@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
+	"strings"
+	"sync"
+	"time"
 )
 
 /*
@@ -19,6 +22,15 @@ For reference, the body looked like this for me when I was doing it via Workflow
  "order": 99
 }
 "
+*/
+
+/*
+type LockableSudoEntitlements struct {
+	mu sync.Mutex
+	ma map[ProjectAndGroup]*SudoEntitlements
+}
+
+var CachedEntitlements = &LockableSudoEntitlements{ma: make(map[ProjectAndGroup]*SudoEntitlements)}
 */
 
 func resourceOKTAASAAssignSudoEntitlement() *schema.Resource {
@@ -49,9 +61,29 @@ func resourceOKTAASAAssignSudoEntitlement() *schema.Resource {
 	}
 }
 
+type ProjectAndGroup struct {
+	mu      sync.Mutex
+	Project string
+	Group   string
+}
+
 type AssignedSudoEntitlement struct {
 	SudoId string `json:"sudo_id"`
 	Order  int    `json:"order"`
+}
+
+type SudoEntitlements struct {
+	List []struct {
+		ID        string    `json:"id,omitempty"`
+		SudoID    string    `json:"sudo_id,omitempty"`
+		SudoName  string    `json:"sudo_name,omitempty"`
+		Name      string    `json:"name,omitempty"`
+		ProjectID string    `json:"project_id,omitempty"`
+		GroupID   string    `json:"group_id,omitempty"`
+		Order     int       `json:"order,omitempty"`
+		CreatedAt time.Time `json:"created_at,omitempty"`
+		DeletedAt time.Time `json:"deleted_at,omitempty"`
+	} `json:"list"`
 }
 
 func resourceOKTAASAAssignSudoEntitlementCreate(d *schema.ResourceData, m interface{}) error {
@@ -106,40 +138,89 @@ func createAssignedSudoEntitlementFromResourceData(d *schema.ResourceData) (*Ass
 	return assignedSudoEntitlement, err
 }
 
+/* There is no way to read a single Sudo Entitlement. Our only option
+ * is to GET :team_name/projects/:project_name/groups/:group_name/entitlements/sudo/
+ * which will return a list like this:
+ * {
+ *     "list": [
+ *         {
+ *             "id": "a9a33f2f-edb4-43f6-9799-ac77ce64df07",
+ *             "sudo_id": "2604bf50-1952-45b8-8ffe-0876cced9069",
+ *             "sudo_name": "full-sudo",
+ *             "name": "full-sudo",
+ *             "project_id": "1c828acb-7bdd-412e-9d33-24cf6fd045aa",
+ *             "group_id": "0d59af5c-cf76-42da-8c3d-a8136a443e6a",
+ *             "order": 50,
+ *             "created_at": "2021-06-11T15:55:21.630317Z",
+ *             "deleted_at": null
+ *         }
+ *     ]
+ * }
+ */
 func resourceOKTAASAAssignSudoEntitlementRead(d *schema.ResourceData, m interface{}) error {
 	sessionToken := m.(Bearer)
 	assignedSudoEntitlementId := d.Id()
+	projectName := d.Get("project_name").(string)
+	groupName := d.Get("group_name").(string)
+	projectAndGroup := ProjectAndGroup{
+		Project: projectName,
+		Group:   groupName,
+	}
 
-	//get project_name from terraform config.
-
-	resp, err := SendGet(sessionToken.BearerToken, "/teams/"+teamName+"/entitlements/sudo/"+assignedSudoEntitlementId)
+	entitlementsList := new(SudoEntitlements)
+	//entitlementsList, found := GetSudoEntitlementsFromCache(projectAndGroup)
+	//log.Printf("[DEBUG] ASER %t Object at key %+v was %+v", found, projectAndGroup, entitlementsList)
+	//if !found {
+	// Fetch the full list for this project and group
+	url := "/teams/" + teamName + "/projects/" + projectName + "/groups/" + groupName + "/entitlements/sudo/"
+	log.Printf("[DEBUG] ASER Going to fetch all sudo entitlements for %+v from %s", projectAndGroup, url)
+	resp, err := SendGet(sessionToken.BearerToken, url)
 
 	if err != nil {
-		return fmt.Errorf("[ERROR] Error when reading sudo entitlement. Id: %s. Error: %s", assignedSudoEntitlementId, err)
+		return fmt.Errorf("[ERROR] ASER Error when reading sudo entitlement. Id: %+v. Error: %+v", assignedSudoEntitlementId, err)
 	}
 
 	status := resp.StatusCode()
-
 	if status == 200 {
-		log.Printf("[DEBUG] assigned Sudo entitlement %s exists", assignedSudoEntitlementId)
+		body := resp.Body()
+		log.Printf("[DEBUG] ASER Got response body %s", body)
 
-		var assignedSudoEntitlement AssignedSudoEntitlement
-		err := json.Unmarshal([]byte(resp.Body()), &assignedSudoEntitlement)
+		err := json.Unmarshal([]byte(body), &entitlementsList)
 
 		if err != nil {
-			return fmt.Errorf("[ERROR] Error when reading sudo entitlement state. Token: %s. Error: %s", assignedSudoEntitlementId, err)
+			return fmt.Errorf("[ERROR] ASER Error when reading sudo entitlement assignments. Error: %s\n%s", err, body)
 		}
 
-		d.Set("sudo_id", assignedSudoEntitlement.SudoId)
-		d.Set("order", assignedSudoEntitlement.Order)
-
+		log.Printf("[DEBUG] ASER %s: %+v", url, entitlementsList)
+		//CachedEntitlements[projectAndGroup] = entitlementsList
 	} else if status == 404 {
-		log.Printf("[DEBUG] No sudo entitlement %s in this project", assignedSudoEntitlementId)
+		log.Printf("[DEBUG] ASER No sudo entitlements %s in %+v", assignedSudoEntitlementId, projectAndGroup)
 		d.SetId("")
 		return nil
 	} else {
-		return fmt.Errorf("[ERROR] Something went wrong while retrieving a list of sudo entitlements. Error: %s", resp)
+		return fmt.Errorf("[ERROR] ASER Something went wrong while retrieving a list of sudo entitlements for %+v. Error: %s", projectAndGroup, resp)
 	}
+	//}
+
+	// assignedSudoEntitlementId will be "projectName/groupName/sudoId"
+	aseiSplit := strings.Split(assignedSudoEntitlementId, "/")
+	sudoId := aseiSplit[2]
+	for _, entitlement := range entitlementsList.List {
+		if sudoId == entitlement.SudoID {
+			if entitlement.DeletedAt.IsZero() {
+				d.Set("sudo_id", entitlement.SudoID)
+				// If our order is 0, we don't care what the server order is
+				if d.Get("order").(int) != 0 {
+					d.Set("order", entitlement.Order)
+				}
+				return nil
+			} else {
+				log.Printf("[DEBUG] ASER %s found, but it was deleted %v", sudoId, entitlement.DeletedAt)
+			}
+		}
+	}
+
+	d.SetId("")
 	return nil
 }
 

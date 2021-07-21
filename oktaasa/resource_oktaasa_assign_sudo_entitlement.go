@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform/helper/schema"
 	"log"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -62,7 +61,6 @@ func resourceOKTAASAAssignSudoEntitlement() *schema.Resource {
 }
 
 type ProjectAndGroup struct {
-	mu      sync.Mutex
 	Project string
 	Group   string
 }

@@ -205,3 +205,37 @@ $ make testacc
 ```
 
 **Special thanks to Aleksei Denisov and the Splunk Cloud team members who were the authors of the original provider which has since been re-purposed for this certified version**
+
+## Writing unit tests
+
+See https://www.terraform.io/docs/extend/testing/unit-testing.html
+
+Create some constants containing sample terraform code.
+
+```go
+const testAccGroupAssignUpdateConfig = `
+resource "oktaasa_project" "test" {
+  project_name = "test-acc-project_g"
+  next_unix_uid = 60120
+  next_unix_gid = 63020
+}
+
+resource "oktaasa_create_group" "test-group" {
+  name = "test-acc-group_g"
+}
+
+resource "oktaasa_assign_group" "test-acc-group-assignment" {
+  project_name = oktaasa_project.test.project_name
+  group_name = oktaasa_create_group.test-group.name
+  server_access = true
+  server_admin = false
+  create_server_group = true
+}`
+```
+
+Each test starts with a function with the following signature:
+
+```go
+func TestAccGroupAssign(t *testing.T) {
+```
+

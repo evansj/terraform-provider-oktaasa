@@ -148,9 +148,16 @@ func createSudoEntitlementFromResourceData(d *schema.ResourceData) (*SudoEntitle
 	if err != nil {
 		return nil, err
 	}
+
+	// Presumably a bug, but the ASA API requires us to pass in an empty
+	// value for `/commands` and fails if it is not present. So we make
+	// sure to pass an empty value for `Commands`
 	sudoEntitlement := &SudoEntitlement{
 		Name:               d.Get("name").(string),
 		Description:        d.Get("description").(string),
+		NoPasswd:           d.Get("no_passwd").(bool),
+		NoExec:             d.Get("no_exec").(bool),
+		SetEnv:             d.Get("set_env").(bool),
 		StructuredCommands: structuredCommands,
 		Commands:           make([]string, 0),
 	}
@@ -160,6 +167,7 @@ func createSudoEntitlementFromResourceData(d *schema.ResourceData) (*SudoEntitle
 	if !ok {
 		return nil, fmt.Errorf("Sudo entitlement name \"%s\" is invalid, name may only contain alphanumeric characters (a-Z, 0-9), hyphens (-), underscores (_), and periods (.)", sudoEntitlement.Name)
 	}
+	log.Printf("[DEBUG] Created SudoEntitlement struct from resource data %v:\n%v", d, sudoEntitlement)
 	return sudoEntitlement, err
 }
 
@@ -196,18 +204,38 @@ func resourceOKTAASASudoEntitlementRead(d *schema.ResourceData, m interface{}) e
 	status := resp.StatusCode()
 
 	if status == 200 {
-		log.Printf("[DEBUG] Sudo entitlement %s exists", sudoEntitlementId)
+		log.Printf("[DEBUG] Sudo entitlement %s exists: %s", sudoEntitlementId, resp.Body())
 
 		var sudoEntitlement SudoEntitlement
 		err := json.Unmarshal([]byte(resp.Body()), &sudoEntitlement)
 
+		log.Printf("[DEBUG] unmarshalled to %+v", sudoEntitlement)
 		if err != nil {
 			return fmt.Errorf("[ERROR] Error when reading sudo entitlement state. Token: %s. Error: %s", sudoEntitlementId, err)
 		}
 
 		d.Set("name", sudoEntitlement.Name)
 		d.Set("description", sudoEntitlement.Description)
-
+		d.Set("run_as", sudoEntitlement.RunAs)
+		d.Set("no_exec", sudoEntitlement.NoExec)
+		d.Set("no_passwd", sudoEntitlement.NoPasswd)
+		d.Set("set_env", sudoEntitlement.SetEnv)
+		d.Set("sub_env", sudoEntitlement.SubEnv)
+		d.Set("add_env", sudoEntitlement.AddEnv)
+		if len(sudoEntitlement.StructuredCommands) > 0 {
+			var commands []map[string]interface{}
+			for _, iCmd := range sudoEntitlement.StructuredCommands {
+				cmd := make(map[string]interface{})
+				cmd["args"] = iCmd.Args
+				cmd["args_type"] = iCmd.ArgsType
+				cmd["command"] = iCmd.Command
+				cmd["command_type"] = iCmd.CommandType
+				commands = append(commands, cmd)
+			}
+			if err := d.Set("command", commands); err != nil {
+				return fmt.Errorf("Error settings commands: %v", err)
+			}
+		}
 	} else if status == 404 {
 		log.Printf("[DEBUG] No sudo entitlement %s in this project", sudoEntitlementId)
 		d.SetId("")
@@ -227,8 +255,9 @@ func resourceOKTAASASudoEntitlementUpdate(d *schema.ResourceData, m interface{})
 		return err
 	}
 
-	sudoEntitlementB, _ := json.Marshal(sudoEntitlement)
 	sudoEntitlementId := d.Id()
+	sudoEntitlement.Id = sudoEntitlementId
+	sudoEntitlementB, _ := json.Marshal(sudoEntitlement)
 
 	log.Printf("[DEBUG] Updating sudo entitlement %s with payload %s", sudoEntitlementId, sudoEntitlementB)
 	//make API call to update Sudo Entitlement
@@ -244,16 +273,13 @@ func resourceOKTAASASudoEntitlementUpdate(d *schema.ResourceData, m interface{})
 		return fmt.Errorf("[ERROR] Unexpected error when updating sudo entitlement %d, Error: %s, Response: %s", status, err, resp.Body())
 	}
 
-	newSudoEntitlement := SudoEntitlement{}
-
-	jsonErr := json.Unmarshal(resp.Body(), &newSudoEntitlement)
-	if jsonErr != nil {
-		log.Printf("[DEBUG] Error storing SudoEntitlement: %s", jsonErr)
+	if status == 204 { // No Content
+		log.Printf("[DEBUG] Sudo entitlement %s updated successfully", sudoEntitlementId)
+	} else {
+		log.Printf("[DEBUG] Sudo entitlement %s update failed, status %d, Response %s", sudoEntitlementId, status, resp.Body())
+		// update resource ID
+		d.SetId("")
 	}
-
-	// update resource ID
-	d.SetId(newSudoEntitlement.Id)
-
 	return resourceOKTAASASudoEntitlementRead(d, m)
 }
 

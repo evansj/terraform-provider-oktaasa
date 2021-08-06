@@ -66,6 +66,9 @@ func resourceOKTAASAProject() *schema.Resource {
 				Default:  false,
 			},
 		},
+		Importer: &schema.ResourceImporter{
+			State: resourceOKTAASAProjectImport,
+		},
 	}
 }
 
@@ -171,6 +174,7 @@ func resourceOKTAASAProjectRead(d *schema.ResourceData, m interface{}) error {
 		}
 
 		d.SetId(project.Name)
+		d.Set("project_name", project.Name)
 		d.Set("create_server_users", project.CreateServerUsers)
 		d.Set("force_shared_ssh_users", project.ForceSharedSshUsers)
 		d.Set("forward_traffic", project.ForwardTraffic)
@@ -198,6 +202,17 @@ func resourceOKTAASAProjectRead(d *schema.ResourceData, m interface{}) error {
 	} else {
 		return fmt.Errorf("[DEBUG] failed to read project state. Project: %s Status code: %d", projectName, status)
 	}
+}
+
+func resourceOKTAASAProjectImport(d *schema.ResourceData, m interface{}) (imported []*schema.ResourceData, err error) {
+	id := d.Id()
+	err = resourceOKTAASAProjectRead(d, m)
+	if err == nil && d.Id() != "" {
+		imported = append(imported, d)
+	} else {
+		err = fmt.Errorf("[DEBUG] project with id %s not found.", id)
+	}
+	return imported, err
 }
 
 func resourceOKTAASAProjectUpdate(d *schema.ResourceData, m interface{}) error {
